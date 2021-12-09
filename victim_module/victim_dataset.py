@@ -46,3 +46,13 @@ class IMDB_Dataset(Dataset):
 
     def __len__(self):
         return len(self.encodings['input_ids'])
+
+
+class SST2_Dataset(Dataset):
+    def __init__(self, train_data=True, debug_mode=False):
+        super(SST2_Dataset, self).__init__()
+
+
+class AGNEWS_Dataset(Dataset):
+    def __init__(self, train_data=True, debug_mode=False):
+        super(AGNEWS_Dataset, self).__init__()
