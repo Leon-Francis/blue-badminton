@@ -4,7 +4,7 @@ from transformers import BertModel
 
 
 class Victim_Bert(nn.Module):
-    def __init__(self, label_num:int, linear_layer_num:int, dropout_rate:float, is_fine_tuning=True, is_entailment=False):
+    def __init__(self, label_num:int, linear_layer_num:int, dropout_rate:float, is_fine_tuning=True):
         super(Victim_Bert, self).__init__()
         self.bert_model = BertModel.from_pretrained('bert-base-uncased')
         self.hidden_size = 768
@@ -24,13 +24,13 @@ class Victim_Bert(nn.Module):
         self.fc = nn.Sequential(*modules)
 
 
-    def forward(self, x, types, masks):
+    def forward(self, x, masks, types):
         # inputs = (x, types, masks)
         encoder, pooled = self.bert_model(x, masks, types)[:]
         logits = self.fc(pooled)
         return logits
 
-    def embedding(self, x, types, masks):
+    def embedding(self, x, masks, types):
         encoder, pooled = self.bert_model(x, masks, types)[:]
         return pooled
 
