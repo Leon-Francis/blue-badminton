@@ -69,7 +69,7 @@ def evaluate(test_data, victim_model, criterion):
     loss_mean = 0.0
     correct = 0
     total = 0
-    for x, masks, types, y in train_data:
+    for x, masks, types, y in test_data:
         x = x.to(Victim_Train_Config.train_device)
         masks = masks.to(Victim_Train_Config.train_device)
         types = types.to(Victim_Train_Config.train_device)
