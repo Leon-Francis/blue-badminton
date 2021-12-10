@@ -35,6 +35,6 @@ class Decoder_Model(nn.Module):
         output, state = self.decoder(augmented_hidden)
 
         decoded = self.linear_decoder(output.contiguous().view(-1, self.nhidden))
-        decoded = decoded.view(batch_size, sen_len, self.ntokens)
+        decoded = decoded.view(batch_size, sen_len, -1)
 
         return decoded
