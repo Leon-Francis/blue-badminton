@@ -4,8 +4,9 @@ from transformers import BertModel
 from decoder_config import BERT_HIDDEN_SIZE, BERT_VOCAB_SIZE
 
 
-class Decoder_Model(nn.Module):
+class Decoder_LSTM(nn.Module):
     def __init__(self, nhidden, num_layers, dropout, fine_tuning=False):
+        super(Decoder_LSTM, self).__init__()
         self.nhidden = nhidden
         self.bert_model = BertModel.from_pretrained('bert-base-uncased')
         if not fine_tuning:
