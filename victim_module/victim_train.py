@@ -5,7 +5,7 @@ from datetime import datetime
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from victim_config import CONFIG_PATH, OUTPUT_DIR, Victim_Train_Config, dataset_config, IMDB_Config, SST2_Config, AGNEWS_Config
+from victim_config import CONFIG_PATH, OUTPUT_DIR, Victim_Train_Config, dataset_config
 from victim_dataset import IMDB_Dataset, SST2_Dataset, AGNEWS_Dataset
 from victim_model import Victim_Bert
 from tools import logging, get_time

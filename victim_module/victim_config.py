@@ -9,9 +9,9 @@ class Victim_Train_Config():
     train_device = torch.device('cuda:' + str(cuda_idx))
     dataset = 'IMDB'
     victim_model_name = 'Bert'
-    batch_size = 16
-    epoch = 100
-    save_acc_limit = 0.80
+    batch_size = 8
+    epoch = 30
+    save_acc_limit = 0.85
 
     debug_mode = False
 
@@ -20,8 +20,8 @@ class Victim_Train_Config():
     is_fine_tuning = True
 
     Bert_lr = 1e-5
-    lr = 3e-4
-    skip_loss = 0
+    lr = 1e-3
+    skip_loss = 0.16
 
 
 class IMDB_Config():
