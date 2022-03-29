@@ -4,39 +4,54 @@ CONFIG_PATH = './victim_module/victim_config.py'
 OUTPUT_DIR = './victim_module/outputs'
 
 
-class Victim_Train_Config():
-    cuda_idx = 1
-    train_device = torch.device('cuda:' + str(cuda_idx))
-    dataset = 'IMDB'
-    victim_model_name = 'Bert'
-    batch_size = 8
-    epoch = 30
-    save_acc_limit = 0.85
+class Victim_config():
+    CUDA_IDX = 5
+    TRAIN_DEVICE = torch.device('cuda:' + str(CUDA_IDX))
+    DATASET = 'IMDB'
+    DEBUG_MODE = False
 
-    debug_mode = False
+    NUM_EPOCHS = 10
+    BATCH_SIZE = 32
 
-    linear_layer_num = 1
-    dropout_rate = 0.5
-    is_fine_tuning = True
+    BERT_LEARNING_RATE = 3e-5
+    CUSTOM_LEARNING_RATE = 1e-3
+    BETAS = (0.9, 0.999)
+    BERT_WEIGHT_DECAY = 0.01
+    EPS = 1e-8
 
-    Bert_lr = 1e-5
-    lr = 1e-3
-    skip_loss = 0.16
+    PRETRAINED_MODEL_NAME = 'bert-base-cased'
+    NUM_PRETRAINED_BERT_LAYERS = 12
+    NUM_CLASSES = 2
+    TOP_DOWN = True
+    NUM_RECURRENT_LAYERS = 3
+    HIDDEN_SIZE = 128
+    REINITIALIZE_POOLER_PARAMETERS = False
+    USE_BIDIRECTIONAL = True
+    DROPOUT_RATE = 0.2
+    AGGREGATE_ON_CLS_TOKEN = True
+    CONCATENATE_HIDDEN_STATES = False
+    FINE_TUNING = False
 
 
 class IMDB_Config():
-    train_data_path = r'./dataset/IMDB/aclImdb/train.std'
-    test_data_path = r'./dataset/IMDB/aclImdb/test.std'
-    labels_num = 2
-    tokenizer_name = 'bert-base-cased'
-    remove_stop_words = False
-    sen_len = 230
+    """
+    0 for negative
+    1 for positive
+    """
+    TRAIN_DATA_PATH = r'./data/IMDB/aclImdb/train.std'
+    TEST_DATA_PATH = r'./data/IMDB/aclImdb/test.std'
+    LABEL_NUM = 2
+    TOKENIZER_NAME = 'bert-base-cased'
+    MAX_TOKENIZATION_LENGTH = 512
     vocab_size = BERT_VOCAB_SIZE
+    AGGREGATE_ON_CLS_TOKEN = True
+    CONCATENATE_HIDDEN_STATES = False
+    FINE_TUNING = False
 
 
 class SST2_Config():
-    train_data_path = r'./dataset/SST2/train.std'
-    test_data_path = r'./dataset/SST2/test.std'
+    train_data_path = r'./data/SST2/train.std'
+    test_data_path = r'./data/SST2/test.std'
     labels_num = 2
     tokenizer_name = 'bert-base-cased'
     remove_stop_words = False
@@ -45,8 +60,8 @@ class SST2_Config():
 
 
 class AGNEWS_Config():
-    train_data_path = r'./dataset/AGNEWS/train.std'
-    test_data_path = r'./dataset/AGNEWS/test.std'
+    train_data_path = r'./data/AGNEWS/train.std'
+    test_data_path = r'./data/AGNEWS/test.std'
     labels_num = 4
     tokenizer_name = 'bert-base-cased'
     remove_stop_words = False
@@ -55,9 +70,9 @@ class AGNEWS_Config():
 
 
 class SNLI_Config():
-    train_data_path = r'./dataset/SNLI/train.txt'
-    test_data_path = r'./dataset/SNLI/test.txt'
-    sentences_data_path = r'./dataset/SNLI/sentences.txt'
+    train_data_path = r'./data/SNLI/train.txt'
+    test_data_path = r'./data/SNLI/test.txt'
+    sentences_data_path = r'./data/SNLI/sentences.txt'
     labels_num = 3
     label_classes = {'neutral': 0, 'contradiction': 1, 'entailment': 2}
     tokenizer_name = 'bert-base-cased'
@@ -66,4 +81,5 @@ class SNLI_Config():
     vocab_size = BERT_VOCAB_SIZE
 
 
-dataset_config = {'IMDB': IMDB_Config, 'SST2': SST2_Config, 'AGNEWS': AGNEWS_Config, 'SNLI': SNLI_Config}
+dataset_config = {'IMDB': IMDB_Config, 'SST2': SST2_Config,
+                  'AGNEWS': AGNEWS_Config, 'SNLI': SNLI_Config}
