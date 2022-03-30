@@ -50,13 +50,14 @@ def train(train_data, victim_model, criterion, optimizer):
         masks = masks.to(Victim_config.TRAIN_DEVICE)
         types = types.to(Victim_config.TRAIN_DEVICE)
         y = y.to(Victim_config.TRAIN_DEVICE)
+        optimizer.zero_grad()
+        
         logits = victim_model(input_ids=x,
                               token_type_ids=types,
                               attention_mask=masks)
         loss = criterion(logits, y)
         loss_mean += loss.item()
 
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
@@ -73,7 +74,6 @@ def evaluate(test_data, victim_model, criterion):
         acc = correct_pred.sum() / len(correct_pred)
         return acc
 
-    victim_model.eval()
     loss_mean = 0.0
     acc_mean = 0.0
 
@@ -171,9 +171,9 @@ if __name__ == '__main__':
     temp_path = cur_models_dir + \
         f'/{Victim_config.DATASET}_temp_model.pt'
     for ep in range(Victim_config.NUM_EPOCHS):
-        logging(f'epoch {ep} start train')
+        logging(f'epoch {ep+1} start train')
         train_loss = train(train_data, model, criterion, optimizer)
-        logging(f'epoch {ep} start evaluate')
+        logging(f'epoch {ep+1} start evaluate')
         evaluate_loss, acc = evaluate(test_data, model, criterion)
         if acc > best_acc:
             best_acc = acc
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                 torch.save(best_state, temp_path)
 
         logging(
-            f'epoch {ep} done! train_loss {train_loss:.5f} evaluate_loss {evaluate_loss:.5f} \n'
+            f'epoch {ep+1} done! train_loss {train_loss:.5f} evaluate_loss {evaluate_loss:.5f} \n'
             f'acc {acc:.5f} now best_acc {best_acc:.5f}')
 
     if best_state != None:

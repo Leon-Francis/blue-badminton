@@ -51,7 +51,11 @@ class IMDB_Dataset(Dataset):
                 for line in file:
                     i -= 1
                     line = line.strip('\n')
-                    data.append(clean_text(line[:-1]))
+                    sentence = line[:-1]
+                    sentence = re.sub(r'<br />', '', sentence)
+                    sentence = sentence.lstrip().rstrip()
+                    sentence = re.sub(' +', ' ', sentence)
+                    data.append(sentence)
                     labels.append(int(line[-1]))
                     if i == 0:
                         break
@@ -60,7 +64,13 @@ class IMDB_Dataset(Dataset):
         with open(path, 'r', encoding='utf-8') as file:
             for line in file:
                 line = line.strip('\n')
-                data.append(clean_text(line[:-1]))
+                sentence = line[:-1]
+                sentence = re.sub(r'<br />', '', sentence)
+                sentence = sentence.lstrip().rstrip()
+                sentence = re.sub(' +', ' ', sentence)
+                if IMDB_Config.APPLY_CLEANING:
+                    sentence = clean_text(sentence)
+                data.append(sentence)
                 labels.append(int(line[-1]))
         logging(f'loading data {len(data)} from {path}')
         return data, labels

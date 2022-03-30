@@ -190,27 +190,9 @@ class FineTunedBert(nn.Module):
 
         if self.num_recurrent_layers > 0:
             # Set initial states
-            if self.use_gpu:
-                h0 = Variable(torch.zeros(self.num_recurrent_layers * 2        # (L * 2 OR L, B, H)
-                                          if self.use_bidirectional else self.num_recurrent_layers,
-                                          input_ids.shape[0],
-                                          self.hidden_size)).to(self.device)
-                c0 = Variable(torch.zeros(self.num_recurrent_layers * 2        # (L * 2 OR L, B, H)
-                                          if self.use_bidirectional else self.num_recurrent_layers,
-                                          input_ids.shape[0],
-                                          self.hidden_size)).to(self.device)
-            else:
-                h0 = Variable(torch.zeros(self.num_recurrent_layers * 2        # (L * 2 OR L, B, H)
-                                          if self.use_bidirectional else self.num_recurrent_layers,
-                                          input_ids.shape[0],
-                                          self.hidden_size))
-                c0 = Variable(torch.zeros(self.num_recurrent_layers * 2        # (L * 2 OR L, B, H)
-                                          if self.use_bidirectional else self.num_recurrent_layers,
-                                          input_ids.shape[0],
-                                          self.hidden_size))
 
             # (B, P, H*), (2 x (B, B, H*))
-            lstm_output = self.lstm(sequence_output, (h0, c0))
+            lstm_output = self.lstm(sequence_output)
             sequence_output, _ = lstm_output
 
             # Get last timesteps for each example in the batch; we do this to counteract padding

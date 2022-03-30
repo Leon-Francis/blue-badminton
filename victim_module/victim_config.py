@@ -5,7 +5,7 @@ OUTPUT_DIR = './victim_module/outputs'
 
 
 class Victim_config():
-    CUDA_IDX = 5
+    CUDA_IDX = 4
     TRAIN_DEVICE = torch.device('cuda:' + str(CUDA_IDX))
     DATASET = 'IMDB'
     DEBUG_MODE = False
@@ -43,10 +43,11 @@ class IMDB_Config():
     LABEL_NUM = 2
     TOKENIZER_NAME = 'bert-base-cased'
     MAX_TOKENIZATION_LENGTH = 512
-    vocab_size = BERT_VOCAB_SIZE
+    VOCAB_SIZE = BERT_VOCAB_SIZE
     AGGREGATE_ON_CLS_TOKEN = True
     CONCATENATE_HIDDEN_STATES = False
     FINE_TUNING = False
+    APPLY_CLEANING = False
 
 
 class SST2_Config():
