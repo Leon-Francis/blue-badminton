@@ -32,6 +32,8 @@ class Victim_config():
     CONCATENATE_HIDDEN_STATES = False
     FINE_TUNING = False
 
+    STATE_PATH = 'victim_module/outputs/train_victim_model/2022-03-30_07:11:51/models/IMDB_0.91628_03-30-09-19.pt'
+
 
 class IMDB_Config():
     """

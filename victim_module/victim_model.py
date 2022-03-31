@@ -54,7 +54,7 @@ class FineTunedBert(nn.Module):
 
     def __init__(self, pretrained_model_name, num_pretrained_bert_layers, max_tokenization_length,
                  num_classes=2, top_down=True, num_recurrent_layers=1, use_bidirectional=False,
-                 hidden_size=128, reinitialize_pooler_parameters=False, dropout_rate=0.10,
+                 hidden_size=768, reinitialize_pooler_parameters=False, dropout_rate=0.10,
                  aggregate_on_cls_token=True, concatenate_hidden_states=False, use_gpu=False, device=None, fine_tuning=True):
         super(FineTunedBert, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
