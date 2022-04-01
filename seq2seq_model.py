@@ -56,6 +56,8 @@ class Seq2Seq_bert(nn.Module):
         self.linear_decoder = nn.Linear(
             recurrent_hidden_size*2, self.tokenizer.vocab_size)
 
+        self.softmax = nn.LogSoftmax(dim=1)
+
     def encode(self, input_ids, token_type_ids=None, attention_mask=None):
         bert_outputs = self.bert(input_ids=input_ids,
                                  token_type_ids=token_type_ids,
@@ -83,8 +85,8 @@ class Seq2Seq_bert(nn.Module):
         # (B, P, H*)
         output, state = self.lstm(augmented_embeddings, state)
 
-        decoded = self.linear_decoder(self.dropout(
-            output.reshape(-1, self.recurrent_hidden_size*2)))
+        decoded = self.softmax(self.linear_decoder(self.dropout(
+            output.reshape(-1, self.recurrent_hidden_size*2))))
         # (B, P, V)
         decoded = decoded.view(
             batch_size, self.tokenizer.max_len, self.config.vocab_size)
@@ -112,26 +114,22 @@ class Seq2Seq_bert(nn.Module):
         augmented_embeddings = torch.cat(
             [decoder_embedding, hidden.unsqueeze(1)], dim=2)
 
-        all_indices = []
+        all_decoded = []
         for i in range(self.tokenizer.max_len):
             # (B, 1, H*)
             output, state = self.lstm(augmented_embeddings, state)
             # (B, V)
-            overvocab = self.linear_decoder(output.squeeze(dim=1))
+            decoded = self.softmax(self.linear_decoder(self.dropout(output.squeeze(dim=1))))
 
-            # sampling
-            probs = F.softmax(overvocab / temp, dim=1)
-            indices = torch.multinomial(probs, 1)
+            all_decoded.append(decoded.unsqueeze(1))
 
-            if indices.ndimension() == 1:
-                indices = indices.unsqueeze(dim=1)
-            all_indices.append(indices)
+            topv, topi = decoded.topk(1)
 
-            decoder_embedding = self.embedding_decoder(indices)
+            decoder_embedding = self.embedding_decoder(topi.squeeze().detach())
             augmented_embeddings = torch.cat(
-                [decoder_embedding, hidden.unsqueeze(1)], 2)
+                [decoder_embedding.unsqueeze(1), hidden.unsqueeze(1)], 2)
 
-        # (B, P)
-        max_indices = torch.cat(all_indices, 1)
+        # (B, P, V)
+        all_decoded = torch.cat(all_decoded, dim=1)
 
-        return max_indices
+        return all_decoded

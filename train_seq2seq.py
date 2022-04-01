@@ -1,5 +1,6 @@
 import copy
 import os
+import random
 from shutil import copyfile
 from datetime import datetime
 import torch
@@ -44,16 +45,34 @@ def train(train_data, seq2seq_model, criterion, optimizer):
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
         types = types.to(Seq2Seq_config.TRAIN_DEVICE)
         y = y.to(Seq2Seq_config.TRAIN_DEVICE)
-        optimizer.zero_grad()
-
-        logits = seq2seq_model(
-            input_ids=x, token_type_ids=types, attention_mask=masks)
-
-        logits = logits.reshape(-1, logits.shape[-1])
         y = y.reshape(-1)
 
-        loss = criterion(logits, y)
-        loss_mean += loss.item()
+        optimizer.zero_grad()
+
+        use_teacher_forcing = True if random.random() < Seq2Seq_config.TEACHER_FORCING_RATE else False
+
+        if use_teacher_forcing:
+            # Teacher forcing: Feed the target as the next input
+            logits = seq2seq_model(
+                input_ids=x, token_type_ids=types, attention_mask=masks)
+
+            logits = logits.reshape(-1, logits.shape[-1])
+
+            loss = criterion(logits, y)
+            loss_mean += loss.item()
+
+        else:
+            # Without teacher forcing: use its own predictions as the next input
+            sequence_output, pooled_output = seq2seq_model.encode(
+            input_ids=x, token_type_ids=types, attention_mask=masks)
+
+            gen_logits = seq2seq_model.generate(pooled_output)
+
+            gen_logits = gen_logits.reshape(-1, gen_logits.shape[-1])
+
+            loss = criterion(gen_logits, y)
+            loss_mean += loss.item()
+
 
         loss.backward()
         optimizer.step()
@@ -77,7 +96,7 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
             input_ids=x, token_type_ids=types, attention_mask=masks)
 
         # max_indices: [batch, sen_len]
-        max_indices = seq2seq_model.generate(pooled_output)
+        max_indices = seq2seq_model.generate(pooled_output).argmax(dim=-1)
 
         logits = seq2seq_model(
             input_ids=x, token_type_ids=types, attention_mask=masks)
