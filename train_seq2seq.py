@@ -65,7 +65,8 @@ def train(train_data, seq2seq_model, criterion, optimizer):
 def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
     seq2seq_model.eval()
     loss_mean = 0.0
-    correct_acc = 0
+    gen_acc = 0
+    infer_acc = 0
     for x, masks, types, y in test_data:
         x = x.to(Seq2Seq_config.TRAIN_DEVICE)
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
@@ -82,7 +83,10 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
             input_ids=x, token_type_ids=types, attention_mask=masks)
         outputs_idx = logits.argmax(dim=-1)
 
-        correct_acc += (max_indices == y).float().sum().item() / \
+        gen_acc += (max_indices == y).float().sum().item() / \
+            y.shape[0] / y.shape[1]
+
+        infer_acc += (outputs_idx == y).float().sum().item() / \
             y.shape[0] / y.shape[1]
 
         if (ep + 1) % 3 == 0:
@@ -110,7 +114,7 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
         loss = criterion(logits, y)
         loss_mean += loss.item()
 
-    return loss_mean / len(test_data), correct_acc / len(test_data)
+    return loss_mean / len(test_data), gen_acc / len(test_data), infer_acc / len(test_data)
 
 
 if __name__ == '__main__':
@@ -187,12 +191,12 @@ if __name__ == '__main__':
         train_loss = train(train_data, seq2seq_model, criterion, optimizer)
         logging(f'epoch {ep+1} start evaluate')
         indices_path = cur_dir + f'/eval_seq2seq_model_epoch_{ep+1}.log'
-        evaluate_loss, acc = evaluate(
+        evaluate_loss, gen_acc, infer_acc = evaluate(
             test_data, seq2seq_model, criterion, indices_path, tokenizer, ep)
-        if acc > best_acc:
-            best_acc = acc
+        if gen_acc > best_acc:
+            best_acc = gen_acc
             best_path = cur_models_dir + \
-                f'/{Seq2Seq_config.DATASET}_{acc:.5f}_{get_time()}.pt'
+                f'/{Seq2Seq_config.DATASET}_{gen_acc:.5f}_{get_time()}.pt'
             best_state = copy.deepcopy(seq2seq_model.state_dict())
 
             if ep > 3 and best_state != None:
@@ -202,7 +206,8 @@ if __name__ == '__main__':
 
         logging(
             f'epoch {ep+1} done! train_loss {train_loss:.5f} evaluate_loss {evaluate_loss:.5f} \n'
-            f'acc {acc:.5f} now best_acc {best_acc:.5f}')
+            f'gen_acc {gen_acc:.5f} now best_acc {best_acc:.5f} \n'
+            f'infer_acc {infer_acc:.5f}')
 
     if best_state != None:
         logging(f'saving best seq2seq_model acc {best_acc:.5f} in {best_path}')
