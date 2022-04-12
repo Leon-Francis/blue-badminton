@@ -1,13 +1,12 @@
 import copy
 import os
-import random
 from shutil import copyfile
 from datetime import datetime
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from seq2seq_config import CONFIG_PATH, OUTPUT_DIR, Seq2Seq_config, Victim_config, dataset_config
-from seq2seq_dataset import IMDB_Seq2Seq_Dataset
+from seq2seq_dataset import IMDB_MLM_Dataset
 from victim_module.victim_model import FineTunedBert
 from seq2seq_model import Seq2Seq_bert
 from tools import logging, get_time
@@ -19,18 +18,18 @@ def save_config(path):
 
 def build_bert_dataset():
     if Seq2Seq_config.DATASET == 'IMDB':
-        train_dataset_orig = IMDB_Seq2Seq_Dataset(train_data=True,
+        train_dataset_orig = IMDB_MLM_Dataset(train_data=True,
                                                   debug_mode=Seq2Seq_config.DEBUG_MODE)
-        test_dataset_orig = IMDB_Seq2Seq_Dataset(train_data=False,
+        test_dataset_orig = IMDB_MLM_Dataset(train_data=False,
                                                  debug_mode=Seq2Seq_config.DEBUG_MODE)
 
     train_data = DataLoader(train_dataset_orig,
-                            batch_size=Victim_config.BATCH_SIZE,
+                            batch_size=Seq2Seq_config.BATCH_SIZE,
                             shuffle=True,
                             num_workers=4,
                             drop_last=True)
     test_data = DataLoader(test_dataset_orig,
-                           batch_size=Victim_config.BATCH_SIZE,
+                           batch_size=Seq2Seq_config.BATCH_SIZE,
                            shuffle=False,
                            num_workers=4,
                            drop_last=True)
@@ -40,7 +39,7 @@ def build_bert_dataset():
 def train(train_data, seq2seq_model, criterion, optimizer):
     seq2seq_model.train()
     loss_mean = 0.0
-    for x, masks, types, y in train_data:
+    for x, masks, types, y, _ in train_data:
         x = x.to(Seq2Seq_config.TRAIN_DEVICE)
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
         types = types.to(Seq2Seq_config.TRAIN_DEVICE)
@@ -49,30 +48,14 @@ def train(train_data, seq2seq_model, criterion, optimizer):
 
         optimizer.zero_grad()
 
-        use_teacher_forcing = True if random.random() < Seq2Seq_config.TEACHER_FORCING_RATE else False
-
-        if use_teacher_forcing:
-            # Teacher forcing: Feed the target as the next input
-            logits = seq2seq_model(
-                input_ids=x, token_type_ids=types, attention_mask=masks)
-
-            logits = logits.reshape(-1, logits.shape[-1])
-
-            loss = criterion(logits, y)
-            loss_mean += loss.item()
-
-        else:
-            # Without teacher forcing: use its own predictions as the next input
-            sequence_output, pooled_output = seq2seq_model.encode(
+        # Teacher forcing: Feed the target as the next input
+        logits = seq2seq_model(
             input_ids=x, token_type_ids=types, attention_mask=masks)
 
-            gen_logits = seq2seq_model.generate(pooled_output)
+        logits = logits.reshape(-1, logits.shape[-1])
 
-            gen_logits = gen_logits.reshape(-1, gen_logits.shape[-1])
-
-            loss = criterion(gen_logits, y)
-            loss_mean += loss.item()
-
+        loss = criterion(logits, y)
+        loss_mean += loss.item()
 
         loss.backward()
         optimizer.step()
@@ -84,57 +67,41 @@ def train(train_data, seq2seq_model, criterion, optimizer):
 def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
     seq2seq_model.eval()
     loss_mean = 0.0
-    gen_acc = 0
     infer_acc = 0
-    for x, masks, types, y in test_data:
+    for x, masks, types, y, org_x in test_data:
         x = x.to(Seq2Seq_config.TRAIN_DEVICE)
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
         types = types.to(Seq2Seq_config.TRAIN_DEVICE)
         y = y.to(Seq2Seq_config.TRAIN_DEVICE)
-
-        sequence_output, pooled_output = seq2seq_model.encode(
-            input_ids=x, token_type_ids=types, attention_mask=masks)
-
-        gen_logits = seq2seq_model.generate(pooled_output)
-        # max_indices: [batch, sen_len]
-        max_indices = gen_logits.argmax(dim=-1)
+        org_x = org_x.to(Seq2Seq_config.TRAIN_DEVICE)
 
         logits = seq2seq_model(
             input_ids=x, token_type_ids=types, attention_mask=masks)
         outputs_idx = logits.argmax(dim=-1)
 
-        gen_acc += (max_indices == y).float().sum().item() / \
-            y.shape[0] / y.shape[1]
+        infer_acc += (outputs_idx == org_x).float().sum().item() / \
+            org_x.shape[0] / org_x.shape[1]
 
-        infer_acc += (outputs_idx == y).float().sum().item() / \
-            y.shape[0] / y.shape[1]
-
-        if (ep + 1) % 3 == 0:
+        if (ep + 1) % 5 == 0:
             with open(path, 'a') as f:
                 for i in range(len(y)):
                     f.write('-------orginal sentence----------\n')
                     f.write(
-                        ' '.join(tokenizer.convert_ids_to_tokens(y[i])) +
+                        ' '.join(tokenizer.convert_ids_to_tokens(org_x[i])) +
                         '\n')
                     f.write(
                         '-------sentence -> encoder -> decoder----------\n'
                     )
                     f.write(' '.join(
                         tokenizer.convert_ids_to_tokens(outputs_idx[i])) +
-                        '\n')
-                    f.write(
-                        '-------sentence -> encoder -> decoder generate----------\n'
-                    )
-                    f.write(' '.join(
-                        tokenizer.convert_ids_to_tokens(max_indices[i])) +
                         '\n' * 2)
 
-        gen_logits = gen_logits.reshape(-1, gen_logits.shape[-1])
+        logits = logits.reshape(-1, logits.shape[-1])
         y = y.reshape(-1)
-        loss = criterion(gen_logits, y)
+        loss = criterion(logits, y)
         loss_mean += loss.item()
 
-    return loss_mean / len(test_data), gen_acc / len(test_data), infer_acc / len(test_data)
+    return loss_mean / len(test_data), infer_acc / len(test_data)
 
 
 if __name__ == '__main__':
@@ -183,7 +150,7 @@ if __name__ == '__main__':
                                  device=Seq2Seq_config.TRAIN_DEVICE,
                                  use_bidirectional=True,
                                  dropout_rate=Seq2Seq_config.DROPOUT_RATE,
-                                 fine_tuning=False).to(Seq2Seq_config.TRAIN_DEVICE)
+                                 fine_tuning=Seq2Seq_config.FINE_TUNING).to(Seq2Seq_config.TRAIN_DEVICE)
 
     victim_bert_states_dict = victim_model.bert.state_dict()
     seq2seq_model.bert.load_state_dict(victim_bert_states_dict, strict=False)
@@ -191,17 +158,41 @@ if __name__ == '__main__':
     bert_identifiers = ['embedding', 'encoder', 'pooler']
     no_weight_decay_identifiers = ['bias', 'LayerNorm.weight']
 
-    grouped_model_parameters = [
-        {'params': [param for name, param in seq2seq_model.named_parameters()
-                    if not any(identifier in name for identifier in bert_identifiers)],
-            'lr': Seq2Seq_config.CUSTOM_LEARNING_RATE,
-            'betas': Seq2Seq_config.BETAS,
-            'weight_decay': 0.0,
-            'eps': Seq2Seq_config.EPS}
-    ]
+    if Seq2Seq_config.FINE_TUNING:
+        grouped_model_parameters = [
+            {'params': [param for name, param in seq2seq_model.named_parameters()
+                        if any(identifier in name for identifier in bert_identifiers) and
+                        not any(identifier_ in name for identifier_ in no_weight_decay_identifiers)],
+             'lr': Seq2Seq_config.BERT_LEARNING_RATE,
+             'betas': Seq2Seq_config.BETAS,
+             'weight_decay': Seq2Seq_config.BERT_WEIGHT_DECAY,
+             'eps': Seq2Seq_config.EPS},
+            {'params': [param for name, param in seq2seq_model.named_parameters()
+                        if any(identifier in name for identifier in bert_identifiers) and
+                        any(identifier_ in name for identifier_ in no_weight_decay_identifiers)],
+             'lr': Seq2Seq_config.BERT_LEARNING_RATE,
+             'betas': Seq2Seq_config.BETAS,
+             'weight_decay': 0.0,
+             'eps': Seq2Seq_config.EPS},
+            {'params': [param for name, param in seq2seq_model.named_parameters()
+                        if not any(identifier in name for identifier in bert_identifiers)],
+             'lr': Seq2Seq_config.CUSTOM_LEARNING_RATE,
+             'betas': Seq2Seq_config.BETAS,
+             'weight_decay': 0.0,
+             'eps': Seq2Seq_config.EPS}
+        ]
+    else:
+        grouped_model_parameters = [
+            {'params': [param for name, param in seq2seq_model.named_parameters()
+                        if not any(identifier in name for identifier in bert_identifiers)],
+             'lr': Seq2Seq_config.CUSTOM_LEARNING_RATE,
+             'betas': Seq2Seq_config.BETAS,
+             'weight_decay': 0.0,
+             'eps': Seq2Seq_config.EPS}
+        ]
 
     optimizer = optim.AdamW(grouped_model_parameters)
-    criterion = nn.CrossEntropyLoss().to(Seq2Seq_config.TRAIN_DEVICE)
+    criterion = nn.CrossEntropyLoss(ignore_index=0).to(Seq2Seq_config.TRAIN_DEVICE)
 
     logging('Start training...')
     best_acc = 0.0
@@ -211,12 +202,12 @@ if __name__ == '__main__':
         train_loss = train(train_data, seq2seq_model, criterion, optimizer)
         logging(f'epoch {ep+1} start evaluate')
         indices_path = cur_dir + f'/eval_seq2seq_model_epoch_{ep+1}.log'
-        evaluate_loss, gen_acc, infer_acc = evaluate(
+        evaluate_loss, infer_acc = evaluate(
             test_data, seq2seq_model, criterion, indices_path, tokenizer, ep)
-        if gen_acc > best_acc:
-            best_acc = gen_acc
+        if infer_acc > best_acc:
+            best_acc = infer_acc
             best_path = cur_models_dir + \
-                f'/{Seq2Seq_config.DATASET}_{gen_acc:.5f}_{get_time()}.pt'
+                f'/{Seq2Seq_config.DATASET}_{infer_acc:.5f}_{get_time()}.pt'
             best_state = copy.deepcopy(seq2seq_model.state_dict())
 
             if ep > 3 and best_state != None:
@@ -226,8 +217,7 @@ if __name__ == '__main__':
 
         logging(
             f'epoch {ep+1} done! train_loss {train_loss:.5f} evaluate_loss {evaluate_loss:.5f} \n'
-            f'gen_acc {gen_acc:.5f} now best_acc {best_acc:.5f} \n'
-            f'infer_acc {infer_acc:.5f}')
+            f'gen_acc {infer_acc:.5f} now best_acc {best_acc:.5f}')
 
     if best_state != None:
         logging(f'saving best seq2seq_model acc {best_acc:.5f} in {best_path}')

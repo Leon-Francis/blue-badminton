@@ -12,9 +12,10 @@ class Seq2Seq_config():
     TRAIN_DEVICE = torch.device('cuda:' + str(CUDA_IDX))
     DATASET = 'IMDB'
     DEBUG_MODE = False
+    FINE_TUNING = False
 
-    NUM_EPOCHS = 90
-    BATCH_SIZE = 32
+    NUM_EPOCHS = 20
+    BATCH_SIZE = 16
 
     BERT_LEARNING_RATE = 3e-5
     CUSTOM_LEARNING_RATE = 1e-3
@@ -28,5 +29,3 @@ class Seq2Seq_config():
     RECURRENT_HIDDEN_SIZE = 768
     NUM_RECURRENT_LAYERS = 3
     DROPOUT_RATE = 0.2
-
-    TEACHER_FORCING_RATE = 0.5
