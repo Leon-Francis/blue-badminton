@@ -54,6 +54,7 @@ class IMDB_MLM_Dataset(Dataset):
         self.encoding_token_type_ids = []
         self.decoding_idxs = []
         self.orgin_idxs = []
+        self.sentences_lenth = []
 
         self.data2idx()
 
@@ -99,6 +100,7 @@ class IMDB_MLM_Dataset(Dataset):
             encoding_idx, decoding_idx = self.random_word(data_tokens)
             encoding_idx = [101] + encoding_idx + [102]
             decoding_idx = [0] + decoding_idx + [0]
+            self.sentences_lenth.append(len(encoding_idx))
 
             if len(encoding_idx) < IMDB_Config.MAX_TOKENIZATION_LENGTH:
                 self.encoding_idxs.append(
@@ -123,7 +125,8 @@ class IMDB_MLM_Dataset(Dataset):
             torch.tensor(self.encoding_attention_mask[item]), \
                 torch.tensor(self.encoding_token_type_ids[item]), \
                     torch.tensor(self.decoding_idxs[item]), \
-                        torch.tensor(self.orgin_idxs[item])
+                        torch.tensor(self.orgin_idxs[item]), \
+                            self.sentences_lenth[item]
 
     def __len__(self):
         return len(self.encoding_idxs)

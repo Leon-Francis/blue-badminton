@@ -8,14 +8,14 @@ OUTPUT_DIR = 'outputs'
 
 
 class Seq2Seq_config():
-    CUDA_IDX = 4
+    CUDA_IDX = 2
     TRAIN_DEVICE = torch.device('cuda:' + str(CUDA_IDX))
     DATASET = 'IMDB'
     DEBUG_MODE = False
     FINE_TUNING = False
 
     NUM_EPOCHS = 20
-    BATCH_SIZE = 16
+    BATCH_SIZE = 32
 
     BERT_LEARNING_RATE = 3e-5
     CUSTOM_LEARNING_RATE = 1e-3

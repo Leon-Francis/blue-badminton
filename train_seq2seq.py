@@ -39,7 +39,7 @@ def build_bert_dataset():
 def train(train_data, seq2seq_model, criterion, optimizer):
     seq2seq_model.train()
     loss_mean = 0.0
-    for x, masks, types, y, _ in train_data:
+    for x, masks, types, y, _, _ in train_data:
         x = x.to(Seq2Seq_config.TRAIN_DEVICE)
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
         types = types.to(Seq2Seq_config.TRAIN_DEVICE)
@@ -68,7 +68,7 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
     seq2seq_model.eval()
     loss_mean = 0.0
     infer_acc = 0
-    for x, masks, types, y, org_x in test_data:
+    for x, masks, types, y, org_x, sentences_lenth in test_data:
         x = x.to(Seq2Seq_config.TRAIN_DEVICE)
         masks = masks.to(Seq2Seq_config.TRAIN_DEVICE)
         types = types.to(Seq2Seq_config.TRAIN_DEVICE)
@@ -78,6 +78,11 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
         logits = seq2seq_model(
             input_ids=x, token_type_ids=types, attention_mask=masks)
         outputs_idx = logits.argmax(dim=-1)
+
+        for i, idx in enumerate(outputs_idx):
+            outputs_idx[i][0] = 101
+            outputs_idx[i][sentences_lenth[i]-1] = 102
+            outputs_idx[i][sentences_lenth[i]:] = 0
 
         infer_acc += (outputs_idx == org_x).float().sum().item() / \
             org_x.shape[0] / org_x.shape[1]

@@ -4,4 +4,5 @@ data/
 logs/
 outputs/
 *.pyc
-attack_outputs
+attack_outputs/
+attack_logs/
