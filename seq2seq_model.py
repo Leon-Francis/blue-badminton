@@ -56,8 +56,6 @@ class Seq2Seq_bert(nn.Module):
         self.linear_decoder = nn.Linear(
             recurrent_hidden_size*2, self.tokenizer.vocab_size)
 
-        self.softmax = nn.LogSoftmax(dim=1)
-
     def encode(self, input_ids, token_type_ids=None, attention_mask=None):
         bert_outputs = self.bert(input_ids=input_ids,
                                  token_type_ids=token_type_ids,
@@ -81,8 +79,8 @@ class Seq2Seq_bert(nn.Module):
         # (B, P, H*)
         output, state = self.lstm(embeddings, state)
 
-        decoded = self.softmax(self.linear_decoder(self.dropout(
-            output.reshape(-1, self.recurrent_hidden_size*2))))
+        decoded = self.linear_decoder(self.dropout(
+            output.reshape(-1, self.recurrent_hidden_size*2)))
         # (B, P, V)
         decoded = decoded.view(
             batch_size, self.tokenizer.max_len, self.config.vocab_size)
@@ -113,7 +111,7 @@ class Seq2Seq_bert(nn.Module):
             # (B, 1, H*)
             output, state = self.lstm(decoder_embedding, state)
             # (B, V)
-            decoded = self.softmax(self.linear_decoder(self.dropout(output.squeeze(dim=1))))
+            decoded = self.linear_decoder(self.dropout(output.squeeze(dim=1)))
 
             all_decoded.append(decoded.unsqueeze(1))
 
