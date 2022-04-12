@@ -95,8 +95,9 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
         sequence_output, pooled_output = seq2seq_model.encode(
             input_ids=x, token_type_ids=types, attention_mask=masks)
 
+        gen_logits = seq2seq_model.generate(pooled_output)
         # max_indices: [batch, sen_len]
-        max_indices = seq2seq_model.generate(pooled_output).argmax(dim=-1)
+        max_indices = gen_logits.argmax(dim=-1)
 
         logits = seq2seq_model(
             input_ids=x, token_type_ids=types, attention_mask=masks)
@@ -128,9 +129,9 @@ def evaluate(test_data, seq2seq_model, criterion, path, tokenizer, ep):
                         tokenizer.convert_ids_to_tokens(max_indices[i])) +
                         '\n' * 2)
 
-        logits = logits.reshape(-1, logits.shape[-1])
+        gen_logits = gen_logits.reshape(-1, gen_logits.shape[-1])
         y = y.reshape(-1)
-        loss = criterion(logits, y)
+        loss = criterion(gen_logits, y)
         loss_mean += loss.item()
 
     return loss_mean / len(test_data), gen_acc / len(test_data), infer_acc / len(test_data)

@@ -47,7 +47,7 @@ class Seq2Seq_bert(nn.Module):
         self.embedding_decoder = nn.Embedding(
             self.tokenizer.vocab_size, recurrent_hidden_size)
 
-        self.lstm = nn.LSTM(input_size=self.config.hidden_size+recurrent_hidden_size,
+        self.lstm = nn.LSTM(input_size=recurrent_hidden_size,
                             hidden_size=recurrent_hidden_size,
                             num_layers=num_recurrent_layers,
                             bidirectional=use_bidirectional,
@@ -73,17 +73,13 @@ class Seq2Seq_bert(nn.Module):
     def decode(self, hidden, input_ids):
         # hidden (B, H)
         batch_size = hidden.shape[0]
-        # all hidden (B, P, H)
-        all_hidden = hidden.unsqueeze(dim=1).repeat(
-            1, self.tokenizer.max_len, 1)
 
         state = (hidden.unsqueeze(dim=0).repeat(self.num_layers*2, 1, 1),
                  torch.zeros(self.num_layers*2, batch_size, self.recurrent_hidden_size).to(self.device))
 
         embeddings = self.embedding_decoder(input_ids)
-        augmented_embeddings = torch.cat([embeddings, all_hidden], dim=2)
         # (B, P, H*)
-        output, state = self.lstm(augmented_embeddings, state)
+        output, state = self.lstm(embeddings, state)
 
         decoded = self.softmax(self.linear_decoder(self.dropout(
             output.reshape(-1, self.recurrent_hidden_size*2))))
@@ -111,13 +107,11 @@ class Seq2Seq_bert(nn.Module):
         start_symbols.data.fill_(101)
 
         decoder_embedding = self.embedding_decoder(start_symbols)
-        augmented_embeddings = torch.cat(
-            [decoder_embedding, hidden.unsqueeze(1)], dim=2)
 
         all_decoded = []
         for i in range(self.tokenizer.max_len):
             # (B, 1, H*)
-            output, state = self.lstm(augmented_embeddings, state)
+            output, state = self.lstm(decoder_embedding, state)
             # (B, V)
             decoded = self.softmax(self.linear_decoder(self.dropout(output.squeeze(dim=1))))
 
@@ -125,9 +119,7 @@ class Seq2Seq_bert(nn.Module):
 
             topv, topi = decoded.topk(1)
 
-            decoder_embedding = self.embedding_decoder(topi.squeeze().detach())
-            augmented_embeddings = torch.cat(
-                [decoder_embedding.unsqueeze(1), hidden.unsqueeze(1)], 2)
+            decoder_embedding = self.embedding_decoder(topi.squeeze().detach()).unsqueeze(dim=1)
 
         # (B, P, V)
         all_decoded = torch.cat(all_decoded, dim=1)
