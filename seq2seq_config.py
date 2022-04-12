@@ -29,3 +29,5 @@ class Seq2Seq_config():
     RECURRENT_HIDDEN_SIZE = 768
     NUM_RECURRENT_LAYERS = 3
     DROPOUT_RATE = 0.2
+
+    STATE_PATH = 'outputs/train_seq2seq_model/2022-04-11_09:40:53/models/IMDB_0.35692_04-11-13-30.pt'
