@@ -165,7 +165,6 @@ class FineTunedBert(nn.Module):
                 self.clf = nn.Linear(in_features=max_tokenization_length * input_hidden_dimension,
                                      out_features=num_classes)
 
-
     def forward(self, input_ids, token_type_ids=None, attention_mask=None,     # input_ids: (B, P)
                 position_ids=None, head_mask=None):
         """Function implementing a forward pass of the model"""
@@ -187,6 +186,57 @@ class FineTunedBert(nn.Module):
         if self.concatenate_hidden_states:
             # (B, P, H' = (K+1) x H)
             sequence_output = torch.cat(hidden_outputs, dim=-1)
+
+        if self.num_recurrent_layers > 0:
+            # Set initial states
+
+            # (B, P, H*), (2 x (B, B, H*))
+            lstm_output = self.lstm(sequence_output)
+            sequence_output, _ = lstm_output
+
+            # Get last timesteps for each example in the batch; we do this to counteract padding
+            last_timesteps = []
+            for i in range(len(attention_mask)):
+                last_timesteps.append(
+                    attention_mask[i].tolist().index(0)
+                    if 0 in attention_mask[i].tolist() else self.max_tokenization_length - 1
+                )
+
+            if self.use_gpu:
+                last_timesteps = torch.tensor(
+                    data=last_timesteps).to(self.device)     # (B)
+            else:
+                last_timesteps = torch.tensor(
+                    data=last_timesteps)             # (B)
+            relative_hidden_size = self.hidden_size * \
+                2 if self.use_bidirectional else self.hidden_size
+            last_timesteps = last_timesteps.repeat(
+                1, relative_hidden_size)    # (1, B x H*)
+            # (B, 1, H*)
+            last_timesteps = last_timesteps.view(-1, 1, relative_hidden_size)
+            pooled_sequence_output = sequence_output.gather(                   # (B, H*)
+                dim=1,
+                index=last_timesteps
+            ).squeeze()
+
+            pooled_sequence_output = self.dropout(
+                pooled_sequence_output)      # (B, H*)
+            # (B, num_classes)
+            logits = self.clf(pooled_sequence_output)
+        else:
+            if not self.aggregate_on_cls_token:
+                pooled_output = self.flatten_sequence_length(
+                    sequence_output)  # (B, P x H)
+
+            # (B, P x H OR H)
+            pooled_output = self.dropout(pooled_output)
+            # (B, num_classes)
+            logits = self.clf(pooled_output)
+
+        # (B, num_classes)
+        return logits
+
+    def forward_from_hidden(self, attention_mask, sequence_output, pooled_output):
 
         if self.num_recurrent_layers > 0:
             # Set initial states
