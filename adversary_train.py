@@ -354,9 +354,9 @@ if __name__ == '__main__':
         optimizer, lr_lambda=lambda ep: 1e-2 if ep < 4 else 1.0)
 
     if Attack_config.ONLY_EVAL:
-        path = cur_dir + f'/eval_attack.log'
+        path = cur_dir + f'/eval_org_seq2seq_attack.log'
         attack_acc, org_predict_acc, attacked_predict_acc = evaluate_attack(
-            test_data, seq2seq_model, victim_model, path, tokenizer)
+            test_data, seq2seq_model, victim_model, path, tokenizer, 0)
         logging(
             f'attack_acc:{attack_acc}   org_predict_acc:{org_predict_acc}   attacked_predict_acc:{attacked_predict_acc}')
     else:
