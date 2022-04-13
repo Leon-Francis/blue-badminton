@@ -318,7 +318,7 @@ if __name__ == '__main__':
                                  device=Attack_config.TRAIN_DEVICE,
                                  use_bidirectional=True,
                                  dropout_rate=Seq2Seq_config.DROPOUT_RATE,
-                                 fine_tuning=False).to(Attack_config.TRAIN_DEVICE)
+                                 fine_tuning=True).to(Attack_config.TRAIN_DEVICE)
 
     seq2seq_model.load_state_dict(torch.load(
         Seq2Seq_config.STATE_PATH, map_location=Attack_config.TRAIN_DEVICE))
