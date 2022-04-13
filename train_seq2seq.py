@@ -183,7 +183,7 @@ if __name__ == '__main__':
                         if not any(identifier in name for identifier in bert_identifiers)],
              'lr': Seq2Seq_config.CUSTOM_LEARNING_RATE,
              'betas': Seq2Seq_config.BETAS,
-             'weight_decay': 0.0,
+             'weight_decay': Seq2Seq_config.LSTM_WEIGHT_DECAY,
              'eps': Seq2Seq_config.EPS}
         ]
     else:
@@ -192,12 +192,16 @@ if __name__ == '__main__':
                         if not any(identifier in name for identifier in bert_identifiers)],
              'lr': Seq2Seq_config.CUSTOM_LEARNING_RATE,
              'betas': Seq2Seq_config.BETAS,
-             'weight_decay': 0.0,
+             'weight_decay': Seq2Seq_config.LSTM_WEIGHT_DECAY,
              'eps': Seq2Seq_config.EPS}
         ]
 
     optimizer = optim.AdamW(grouped_model_parameters)
     criterion = nn.CrossEntropyLoss(ignore_index=0).to(Seq2Seq_config.TRAIN_DEVICE)
+
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.85, patience=3,
+                                                     verbose=True, min_lr=3e-8)
+    warmup_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda ep: 1e-2 if ep < 4 else 1.0)
 
     logging('Start training...')
     best_acc = 0.0
@@ -219,6 +223,9 @@ if __name__ == '__main__':
                 logging(
                     f'saving best seq2seq_model acc {best_acc:.5f} in {temp_path}')
                 torch.save(best_state, temp_path)
+
+        warmup_scheduler.step(ep+1)
+        scheduler.step(evaluate_loss, ep+1)
 
         logging(
             f'epoch {ep+1} done! train_loss {train_loss:.5f} evaluate_loss {evaluate_loss:.5f} \n'
